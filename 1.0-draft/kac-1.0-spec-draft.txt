@@ -100,19 +100,19 @@ The KAC 1.0 format
         32ub n
         32b metadata * n
         {
-            3ub texture side length exponent ; The actual length is (2^(exponent+1)), i.e. one of 2 4 8 16 32 64 128 256.
+            3ub texture side length exponent ; The texture's side length is given by (2^(exponent+1)), i.e. it's 2, 4, 8, 16, 32, 64, 128, or 256.
             25ub pixel data offset           ; Offset to the beginning of this texture's pixel data in the TXPX segment's pixel data array.
             4b <padding>                     ; Pad to 32 bits. A KAC 1.0 parser should ignore this, but future versions may add parameters in this space.
         }
     }
-    vertices
+    vertex coordinates
     {
         32sb segmentIdentifier
         {
             "VERT"
         }
         32ub n
-        96b vertex * n
+        96b coordinates * n
         {
             32fb x
             32fb y
@@ -140,13 +140,13 @@ The KAC 1.0 format
             "UV  "
         }
         32ub n
-        64b uv coordinates * n
+        64b coordinates * n
         {
             32fb u
             32fb v
         }
     }
-    mesh
+    triangle mesh
     {
         32sb segmentIdentifier
         {
@@ -158,7 +158,7 @@ The KAC 1.0 format
             16ub materialIdx                ; Index to an entry in the MATE segment that defines this triangle's material.
             48b indexedVertex * 3
             {
-                16ub vertexIdx              ; Index to an entry in the VERT segment that defines the coordinates of this vertex.
+                16ub vertexCoordinatesIdx   ; Index to an entry in the VERT segment that defines the coordinates of this vertex.
                 16ub normalIdx              ; Index to an entry in the NORM segment this defines the normal of this vertex.
                 16ub uvIdx                  ; Index to an entry in the UV segment that defines the UV coordinates of this vertex.
             }
