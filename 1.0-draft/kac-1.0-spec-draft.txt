@@ -1,0 +1,188 @@
+Draft of the KAC 1.0 file format
+2019 Tarpeeksi Hyvae Soft
+
+
+Introduction to KAC 1.0
+=================================
+
+    A KAC 1.0 file is a binary file containing a triangle mesh defined by
+    vertices, normals, UV coordinates, materials, and texture maps.
+
+    The KAC file has no external dependencies - all mesh data (e.g. texture
+    maps) are included in the file.
+
+    The KAC format is primarily intended as a native mesh container for the
+    retro-oriented shiet (https://www.github.com/leikareipa/shiet/) renderer,
+    which targets the Win32 platform and hardware such as the 3dfx Voodoo and
+    3DLABS Permedia.
+
+
+Limitations of the KAC 1.0 format
+=================================
+
+    - The file can contain up to 65536 of each of the following:
+        - vertices
+        - normals
+        - UV coordinates
+        - materials
+    - The file can contain up to 512 textures
+    - Texture dimensions must be:
+        - square
+        - power of two
+        - between 2 and 256 pixels per side (256 x 256 is the maximum size)
+    - Textures cannot have pre-defined levels of mipmapping
+    - Each vertex must have a material, a normal, and UV coordinates
+    - Materials (e.g. color) are defined per face but not per vertex
+    - Polygon colors are stored in 16 bits with alpha (4444 RGBA)
+    - Texture pixels are stored in 16 bits with alpha (5551 RGBA)
+
+
+The KAC 1.0 format
+=================================
+
+    The data in a KAC 1.0 file are divided into named segments: NORM for
+    normals, VERT for vertices, MATE for materials, etc. The segments can
+    appear in any order, with the exceptions that the KAC (header) segment
+    must appear as the first segment, and the ENDS (end-of-file) segment as
+    the last segment.
+
+    The following describes the bit-level format of KAC 1.0.
+
+    Legend:
+        XXsb = XX-bit string (not null-terminated)
+        XXfb = XX-bit floating-point value
+        XXub = XX-bit unsigned integer value
+        XXb  = XX bits of data of unspecified type(s)
+
+    file format header
+    {
+        32sb segmentIdentifier
+        {
+            "KAC "
+        }
+        32fb fileFormatVersion
+        {
+            1.0
+        }
+    }
+    materials
+    {
+        32sb segmentIdentifier
+        {
+            "MATE"
+        }
+        32ub n
+        32b material * n
+        {
+            16b color
+            {
+                4ub r
+                4ub g
+                4ub b
+                4ub a
+            }
+            16b metadata
+            {
+                9ub textureMetadataIdx      ; Index to an entry in the TXMD segment that defines this material's texture. Ignored if (hasTexture == 0).
+                1ub hasTexture              ; Whether this material uses a texture (== 1) or a solid fill (== 0).
+                1ub hasTextureFiltering     ; Whether the material's texture will be scaled with nearest neighbor interpolation (== 0) or with linear interpolation (== 1). 
+                1ub hasSmoothShading        ; Whether to use smooth (interpolated across vertex normals) or flat shading on polygon faces.
+                4b  <padding>               ; Pad to 16 bits. A KAC 1.0 parser should ignore this, but future versions may add parameters in this space.
+            }
+        }
+    }
+    texture metadata
+    {
+        32sb segmentIdentifier
+        {
+            "TXMD"
+        }
+        32ub n
+        32b metadata * n
+        {
+            3ub texture side length exponent ; The actual length is (2^(exponent+1)), i.e. one of 2 4 8 16 32 64 128 256.
+            25ub pixel data offset           ; Offset to the beginning of this texture's pixel data in the TXPX segment's pixel data array.
+            4b <padding>                     ; Pad to 32 bits. A KAC 1.0 parser should ignore this, but future versions may add parameters in this space.
+        }
+    }
+    vertices
+    {
+        32sb segmentIdentifier
+        {
+            "VERT"
+        }
+        32ub n
+        96b vertex * n
+        {
+            32fb x
+            32fb y
+            32fb z
+        }
+    }
+    normals
+    {
+        32sb segmentIdentifier
+        {
+            "NORM"
+        }
+        32ub n
+        96b normal * n
+        {
+            32fb x
+            32fb y
+            32fb z
+        }
+    }
+    uv coordinates
+    {
+        32sb segmentIdentifier
+        {
+            "UV  "
+        }
+        32ub n
+        64b uv coordinates * n
+        {
+            32fb u
+            32fb v
+        }
+    }
+    mesh
+    {
+        32sb segmentIdentifier
+        {
+            "MESH"
+        }
+        32ub n
+        160b triangle * n
+        {
+            16ub materialIdx                ; Index to an entry in the MATE segment that defines this triangle's material.
+            48b indexedVertex * 3
+            {
+                16ub vertexIdx              ; Index to an entry in the VERT segment that defines the coordinates of this vertex.
+                16ub normalIdx              ; Index to an entry in the NORM segment this defines the normal of this vertex.
+                16ub uvIdx                  ; Index to an entry in the UV segment that defines the UV coordinates of this vertex.
+            }
+        }
+    }
+    texture pixel data
+    {
+        32sb segmentIdentifier
+        {
+            "TXPX"
+        }
+        32ub n
+        16b pixel * n
+        {
+            5ub r
+            5ub g
+            5ub b
+            1ub a
+        }
+    }
+    end-of-file
+    {
+        32sb segmentIdentifier
+        {
+            "ENDS"
+        }
+    }
