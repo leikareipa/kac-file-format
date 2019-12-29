@@ -98,11 +98,12 @@ The KAC 1.0 format
             "TXMD"
         }
         32ub n
-        32b metadata * n
+        160b metadata * n
         {
             3ub texture side length exponent ; The texture's side length is given by (2^(exponent+1)), i.e. it's 2, 4, 8, 16, 32, 64, 128, or 256.
             25ub pixel data offset           ; Offset to the beginning of this texture's pixel data in the TXPX segment's pixel data array.
             4b <padding>                     ; Pad to 32 bits. A KAC 1.0 parser should ignore this, but future versions may add parameters in this space.
+            128ub pixel data hash            ; First 128 bits of a SHA-256 hash of the texture's pixel data.
         }
     }
     vertex coordinates
