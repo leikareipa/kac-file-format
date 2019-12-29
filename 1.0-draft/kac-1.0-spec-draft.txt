@@ -5,8 +5,8 @@ Draft of the KAC 1.0 file format
 Introduction to KAC 1.0
 =================================
 
-    A KAC 1.0 file is a binary file containing a triangle mesh defined by
-    vertices, normals, UV coordinates, materials, and texture maps.
+    A KAC 1.0 file is a binary file containing a static triangle mesh defined
+    by vertices, normals, UV coordinates, materials, and texture maps.
 
     The KAC file has no external dependencies - all mesh data (e.g. texture
     maps) are included in the file.
@@ -35,6 +35,7 @@ Limitations of the KAC 1.0 format
     - Materials (e.g. color) are defined per face but not per vertex
     - Polygon colors are stored in 16 bits with alpha (4444 RGBA)
     - Texture pixels are stored in 16 bits with alpha (5551 RGBA)
+    - Animation is not supported
 
 
 The KAC 1.0 format
