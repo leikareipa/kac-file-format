@@ -11,8 +11,8 @@ Introduction to KAC 1.0
     The KAC file has no external dependencies - all mesh data (e.g. texture
     maps) are included in the file.
 
-    The KAC format is primarily intended as a native mesh container for the
-    retro-oriented shiet (https://www.github.com/leikareipa/shiet/) renderer,
+    The KAC format is primarily intended as a companion mesh container for the
+    retro-oriented shiet renderer (https://www.github.com/leikareipa/shiet/),
     which targets the Win32 platform and hardware such as the 3dfx Voodoo and
     3DLABS Permedia.
 
