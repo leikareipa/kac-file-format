@@ -152,7 +152,7 @@ The KAC 1.0 format
     {
         32sb segmentIdentifier
         {
-            "MESH"
+            "3MSH"
         }
         32ub n
         160b triangle * n
