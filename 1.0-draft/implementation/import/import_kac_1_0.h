@@ -27,11 +27,11 @@ int kac10_reader__close_file(void);
 int kac10_reader__input_stream_is_valid(void);
 
 /* Reads the given segment (e.g. normals) from the KAC 1.0 file. Takes in an
- * uninitialized pointer to the relevant data structure - the pointer will be
- * allocated memory, which is then filled with the data read from the KAC file.
- * Returns the number of elements read (i.e. the number of elements pointed to
- * by the pointer). If the value returned is 0, the file either did not contain
- * the given segment, or the segment existed but held no data.
+ * uninitialized (or NULL) pointer to a pointer, which will be initialized by
+ * the function call to point to memory holding the data read from the KAC file.
+ * Returns the number of elements read. If the value returned is 0, the file
+ * either did not contain the given segment, or the segment existed but held no
+ * data.
  * 
  * These functions operate on the file set by kac10_reader__open_file(),
  * which in other words needs to be called prior to calling these readers.

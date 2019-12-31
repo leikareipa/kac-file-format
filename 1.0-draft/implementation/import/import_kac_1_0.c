@@ -186,7 +186,7 @@ int kac10_reader__open_file(const char *const filename)
             scan_input_file_structure());
 }
 
-/* Closes the target file set by kac10_reader__open_file().*/
+/* Closes the input file opened by kac10_reader__open_file().*/
 int kac10_reader__close_file(void)
 {
     if (fclose(INPUT_FILE) == EOF)
