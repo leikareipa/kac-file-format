@@ -132,8 +132,8 @@ bool export_kac_1_0_c::write_materials(const std::vector<kac_1_0_material_s> &ma
 
             std::fwrite((char*)&packedColor, sizeof(packedColor), 1, this->file);
 
-            const uint16_t packedMetadata = (material.metadata.textureMetadataIdx   & 0x1ff) |
-                                            ((material.metadata.hasTexture          & 0x1  ) << 9) |
+            const uint16_t packedMetadata = ((material.metadata.textureMetadataIdx  & 0x1ff) << 0)  |
+                                            ((material.metadata.hasTexture          & 0x1  ) << 9)  |
                                             ((material.metadata.hasTextureFiltering & 0x1  ) << 10) |
                                             ((material.metadata.hasSmoothShading    & 0x1  ) << 11);
                                             
@@ -200,8 +200,8 @@ bool export_kac_1_0_c::write_texture_metadata(const std::vector<kac_1_0_texture_
         
         for (const auto &texture: textures)
         {
-            const uint32_t packedMetadata = (texture.metadata.sideLengthExponent & 0x7) |
-                                            ((texture.metadata.pixelDataOffset & 0x1ffffff) << 3);
+            const uint32_t packedMetadata = ((texture.metadata.sideLengthExponent & 0x7)       << 0) |
+                                            ((texture.metadata.pixelDataOffset    & 0x1ffffff) << 3);
                                             
             std::fwrite((char*)&packedMetadata, sizeof(packedMetadata), 1, this->file);
 
@@ -236,8 +236,8 @@ bool export_kac_1_0_c::write_texture_pixels(const std::vector<kac_1_0_texture_s>
 
             for (unsigned i = 0; i < texturePixelCount; i++)
             {
-                const uint16_t packedColor = texture.pixels[i].r |
-                                             (texture.pixels[i].g << 5) |
+                const uint16_t packedColor = (texture.pixels[i].r << 0)  |
+                                             (texture.pixels[i].g << 5)  |
                                              (texture.pixels[i].b << 10) |
                                              (texture.pixels[i].a << 15);
 
