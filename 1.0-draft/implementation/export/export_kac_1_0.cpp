@@ -5,7 +5,11 @@
  * 
  * Provides functionality to write data into a KAC 1.0 file in an organized manner.
  * 
+ * NOTE: This implementation assumes little-endian byte ordering and 32-bit floats.
+ * 
  */
+
+static_assert(sizeof(float) == 4);
 
 #include <cassert>
 #include <cmath>
@@ -59,7 +63,7 @@ bool export_kac_1_0_c::write_header(void) const
     if (this->is_valid_output_stream())
     {
         std::fputs("KAC ", this->file);
-        std::fwrite((char*)&this->formatVersion, 4, 1, this->file);
+        std::fwrite((char*)&this->formatVersion, sizeof(this->formatVersion), 1, this->file);
     }
 
     return this->is_valid_output_stream();
@@ -86,8 +90,8 @@ bool export_kac_1_0_c::write_uv_coordinates(const std::vector<kac_1_0_uv_coordin
 
         for (const auto &uv: uvCoordinates)
         {
-            std::fwrite((char*)&uv.u, 4, 1, this->file);
-            std::fwrite((char*)&uv.v, 4, 1, this->file);
+            std::fwrite((char*)&uv.u, sizeof(uv.u), 1, this->file);
+            std::fwrite((char*)&uv.v, sizeof(uv.v), 1, this->file);
         }
     }
 
@@ -105,9 +109,9 @@ bool export_kac_1_0_c::write_vertex_coordinates(const std::vector<kac_1_0_vertex
 
         for (const auto &vertex: vertexCoordinates)
         {
-            std::fwrite((char*)&vertex.x, 4, 1, this->file);
-            std::fwrite((char*)&vertex.y, 4, 1, this->file);
-            std::fwrite((char*)&vertex.z, 4, 1, this->file);
+            std::fwrite((char*)&vertex.x, sizeof(vertex.x), 1, this->file);
+            std::fwrite((char*)&vertex.y, sizeof(vertex.y), 1, this->file);
+            std::fwrite((char*)&vertex.z, sizeof(vertex.z), 1, this->file);
         }
     }
 
@@ -155,9 +159,9 @@ bool export_kac_1_0_c::write_normals(const std::vector<kac_1_0_normal_s> &normal
 
         for (const auto &normal: normals)
         {
-            std::fwrite((char*)&normal.x, 4, 1, this->file);
-            std::fwrite((char*)&normal.y, 4, 1, this->file);
-            std::fwrite((char*)&normal.z, 4, 1, this->file);
+            std::fwrite((char*)&normal.x, sizeof(normal.x), 1, this->file);
+            std::fwrite((char*)&normal.y, sizeof(normal.y), 1, this->file);
+            std::fwrite((char*)&normal.z, sizeof(normal.z), 1, this->file);
         }
     }
 

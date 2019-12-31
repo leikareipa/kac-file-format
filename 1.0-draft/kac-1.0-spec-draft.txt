@@ -5,8 +5,9 @@ Draft of the KAC 1.0 file format
 Introduction to KAC 1.0
 =================================
 
-    A KAC 1.0 file is a binary file containing a static triangle mesh defined
-    by vertices, normals, UV coordinates, materials, and texture maps.
+    A KAC 1.0 file is a little-endian binary file containing a static triangle
+    mesh defined by vertices, normals, UV coordinates, materials, and texture
+    maps.
 
     The KAC file has no external dependencies - all mesh data (e.g. texture
     maps) are included in the file.

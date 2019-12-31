@@ -5,6 +5,8 @@
  * 
  * Provides functionality to read data from a KAC 1.0 file in an organized manner.
  * 
+ * NOTE: This implementation assumes little-endian byte ordering and 32-bit floats.
+ * 
  */
 
 #include <assert.h>
