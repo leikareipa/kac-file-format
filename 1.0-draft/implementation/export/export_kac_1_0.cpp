@@ -35,12 +35,14 @@ unsigned export_kac_1_0_c::reduce_8bit_color_value_to_1bit(const uint8_t val)
 
 unsigned export_kac_1_0_c::reduce_8bit_color_value_to_4bit(const uint8_t val)
 {
-    return ((val / 16u) & 0b1111);
+    // Use (255 / 15) instead of (>> 4) for potentially better dynamic range.
+    return (unsigned(val / (255 / 15.0)) & 0b1111);
 }
 
 unsigned export_kac_1_0_c::reduce_8bit_color_value_to_5bit(const uint8_t val)
 {
-    return ((val / 8u) & 0b11111);
+    // Use (255 / 31) instead of (>> 3) for potentially better dynamic range.
+    return (unsigned(val / (255 / 31.0)) & 0b11111);
 }
 
 unsigned export_kac_1_0_c::get_texture_side_length_from_exponent(const unsigned exp)
