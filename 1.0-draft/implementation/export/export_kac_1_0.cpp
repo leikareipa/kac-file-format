@@ -45,37 +45,12 @@ unsigned export_kac_1_0_c::reduce_8bit_color_value_to_5bit(const uint8_t val)
     return (unsigned(val / (255 / 31.0)) & 0b11111);
 }
 
-unsigned export_kac_1_0_c::get_texture_side_length_from_exponent(const unsigned exp)
-{
-    assert(((exp >= 0) && (exp <= 7)) && "The given texture side length exponent is out of bounds.");
-
-    return std::pow(2, (exp + 1));
-}
-
-unsigned export_kac_1_0_c::get_exponent_from_texture_side_length(const unsigned len)
-{
-    assert(((len >= 2) && (len <= 256)) && "The given texture side length is out of bounds.");
-    assert(((len & (len - 1)) == 0) && "The given texture side length is not a power of two.");
-
-    return (unsigned(std::log2(len) - 1) & 0x7);
-}
-
 bool export_kac_1_0_c::write_header(void) const
 {
     if (this->is_valid_output_stream())
     {
         std::fputs("KAC ", this->file);
         std::fwrite((char*)&this->formatVersion, sizeof(this->formatVersion), 1, this->file);
-    }
-
-    return this->is_valid_output_stream();
-}
-
-bool export_kac_1_0_c::write_ending(void) const
-{
-    if (this->is_valid_output_stream())
-    {
-        std::fputs("ENDS", this->file);
     }
 
     return this->is_valid_output_stream();
@@ -131,17 +106,17 @@ bool export_kac_1_0_c::write_materials(const std::vector<kac_1_0_material_s> &ma
 
         for (const auto &material: materials)
         {
-            const uint16_t packedColor = material.color.r |
+            const uint16_t packedColor = (material.color.r << 0) |
                                          (material.color.g << 4) |
                                          (material.color.b << 8) |
                                          (material.color.a << 12);
 
             std::fwrite((char*)&packedColor, sizeof(packedColor), 1, this->file);
 
-            const uint16_t packedMetadata = ((material.metadata.textureMetadataIdx  & 0x1ff) << 0)  |
-                                            ((material.metadata.hasTexture          & 0x1  ) << 9)  |
-                                            ((material.metadata.hasTextureFiltering & 0x1  ) << 10) |
-                                            ((material.metadata.hasSmoothShading    & 0x1  ) << 11);
+            const uint32_t packedMetadata = ((material.metadata.textureIdx          & 0xffff) <<  0) |
+                                            ((material.metadata.hasTexture          & 0x1   ) << 16) |
+                                            ((material.metadata.hasTextureFiltering & 0x1   ) << 17) |
+                                            ((material.metadata.hasSmoothShading    & 0x1   ) << 18);
                                             
             std::fwrite((char*)&packedMetadata, sizeof(packedMetadata), 1, this->file);
         }
@@ -195,59 +170,55 @@ bool export_kac_1_0_c::write_triangles(const std::vector<kac_1_0_triangle_s> &tr
     return this->is_valid_output_stream();
 }
 
-bool export_kac_1_0_c::write_texture_metadata(const std::vector<kac_1_0_texture_s> &textures) const
+bool export_kac_1_0_c::write_textures(const std::vector<kac_1_0_texture_s> &textures) const
 {
     if (this->is_valid_output_stream())
     {
         const uint32_t numTextures = textures.size();
 
-        std::fputs("TXMD", this->file);
+        std::fputs("TXTR", this->file);
         std::fwrite((char*)&numTextures, sizeof(numTextures), 1, this->file);
         
         for (const auto &texture: textures)
         {
-            const uint32_t packedMetadata = ((texture.metadata.sideLengthExponent & 0x7)       << 0) |
-                                            ((texture.metadata.pixelDataOffset    & 0x1ffffff) << 3);
-                                            
-            std::fwrite((char*)&packedMetadata, sizeof(packedMetadata), 1, this->file);
+            assert((texture.metadata.sideLength >= KAC_1_0_MIN_TEXTURE_SIDE_LENGTH) &&
+                   (texture.metadata.sideLength <= KAC_1_0_MAX_TEXTURE_SIDE_LENGTH) &&
+                   ((texture.metadata.sideLength & (texture.metadata.sideLength - 1)) == 0) && // Power of two.
+                   "Invalid texture dimensions.");
 
-            std::fwrite((char*)&texture.metadata.pixelHash, sizeof(texture.metadata.pixelHash), 1, this->file);
-        }
-    }
-
-    return this->is_valid_output_stream();
-}
-
-bool export_kac_1_0_c::write_texture_pixels(const std::vector<kac_1_0_texture_s> &textures) const
-{
-    if (this->is_valid_output_stream())
-    {
-        uint32_t numPixels = 0;
-        for (const auto &texture: textures)
-        {
-            const uint32_t textureSideLen = export_kac_1_0_c::get_texture_side_length_from_exponent(texture.metadata.sideLengthExponent);
-            const uint32_t textureSize = (textureSideLen * textureSideLen);
-
-            numPixels += textureSize;
-        }
-
-        std::fputs("TXPX", this->file);
-        std::fwrite((char*)&numPixels, sizeof(numPixels), 1, this->file);
-
-        // Write the textures' individual pixels.
-        for (const auto &texture: textures)
-        {
-            const uint32_t textureSideLen = export_kac_1_0_c::get_texture_side_length_from_exponent(texture.metadata.sideLengthExponent);
-            const uint32_t texturePixelCount = (textureSideLen * textureSideLen);
-
-            for (unsigned i = 0; i < texturePixelCount; i++)
+            // Write the texture's metadata.
             {
-                const uint16_t packedColor = (texture.pixels[i].r << 0)  |
-                                             (texture.pixels[i].g << 5)  |
-                                             (texture.pixels[i].b << 10) |
-                                             (texture.pixels[i].a << 15);
+                const uint32_t packedParams = (texture.metadata.sideLength & 0xffff);
 
-                std::fwrite((char*)&packedColor, sizeof(packedColor), 1, this->file);
+                std::fwrite((char*)&packedParams, sizeof(packedParams), 1, this->file);
+                std::fwrite((char*)&texture.metadata.pixelHash, sizeof(texture.metadata.pixelHash), 1, this->file);
+            }
+
+            // Write the texture's pixel data in progressively shrinking levels of mipmapping
+            // until we reach the smallest level.
+            for (unsigned m = 0; ; m++)
+            {
+                const uint32_t textureSideLen = (texture.metadata.sideLength / pow(2, m));
+                const uint32_t texturePixelCount = (textureSideLen * textureSideLen);
+
+                if (textureSideLen < KAC_1_0_MIN_TEXTURE_SIDE_LENGTH)
+                {
+                    assert((m > 0) && "At least one level of mipmapping is required.");
+                    break;
+                }
+
+                assert((m < KAC_1_0_MAX_NUM_MIP_LEVELS) &&
+                       "A texture is overflowing the maximum mip level count.");
+
+                for (unsigned p = 0; p < texturePixelCount; p++)
+                {
+                    const uint16_t packedColor = (texture.mipLevel[m][p].r << 0)  |
+                                                 (texture.mipLevel[m][p].g << 5)  |
+                                                 (texture.mipLevel[m][p].b << 10) |
+                                                 (texture.mipLevel[m][p].a << 15);
+
+                    std::fwrite((char*)&packedColor, sizeof(packedColor), 1, this->file);
+                }
             }
         }
     }
