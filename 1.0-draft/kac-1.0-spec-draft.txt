@@ -1,5 +1,5 @@
 Draft of the KAC 1.0 file format
-2019 Tarpeeksi Hyvae Soft
+2019, 2020 Tarpeeksi Hyvae Soft
 
 
 Introduction to KAC 1.0
@@ -18,22 +18,22 @@ Introduction to KAC 1.0
     3DLABS Permedia.
 
 
-Limitations of the KAC 1.0 format
+Features and limitations of the KAC 1.0 format
 =================================
 
-    - The file can contain up to 65536 of each of the following:
+    - A KAC 1.0 file can contain up to 65536 of each of the following:
         - vertices
         - normals
         - UV coordinates
         - materials
-    - The file can contain up to 512 textures
+        - textures
     - Texture dimensions must be:
         - square
         - power of two
-        - between 2 and 256 pixels per side (256 x 256 is the maximum size)
-    - Textures cannot have pre-defined levels of mipmapping
+        - between 1 and 256 pixels per side (256 x 256 is the maximum size)
+    - All textures are stored with mipmapping of progressive size-halving down to 1 x 1
     - Each vertex must have a material, a normal, and UV coordinates
-    - Materials (e.g. color) are defined per face but not per vertex
+    - Materials are defined per face but not per vertex
     - Polygon colors are stored in 16 bits with alpha (4444 RGBA)
     - Texture pixels are stored in 16 bits with alpha (5551 RGBA)
     - Animation is not supported
@@ -45,7 +45,7 @@ The KAC 1.0 format
     The data in a KAC 1.0 file are divided into named segments: NORM for
     normals, VERT for vertices, MATE for materials, etc. The segments can
     appear in any order, with the exceptions that the KAC (header) segment
-    must appear as the first segment, and the ENDS (end-of-file) segment as
+    must appear as the first segment, and the TXTR (textures) segment as
     the last segment.
 
     The following describes the bit-level format of KAC 1.0.
@@ -55,6 +55,7 @@ The KAC 1.0 format
         XXfb = XX-bit floating-point value
         XXub = XX-bit unsigned integer value
         XXb  = XX bits of data of unspecified type(s)
+        ~b   = Variable number of bits
 
     file format header
     {
@@ -74,7 +75,7 @@ The KAC 1.0 format
             "MATE"
         }
         32ub n
-        32b material * n
+        48b material * n
         {
             16b color
             {
@@ -83,29 +84,14 @@ The KAC 1.0 format
                 4ub b
                 4ub a
             }
-            16b metadata
+            32b metadata
             {
-                9ub textureMetadataIdx      ; Index to an entry in the TXMD segment that defines this material's texture. Ignored if (hasTexture == 0).
-                1ub hasTexture              ; Whether this material uses a texture (== 1) or a solid fill (== 0).
-                1ub hasTextureFiltering     ; Whether the material's texture will be scaled with nearest neighbor interpolation (== 0) or with linear interpolation (== 1). 
-                1ub hasSmoothShading        ; Whether to use smooth (interpolated across vertex normals) or flat shading on polygon faces.
-                4b  <padding>               ; Pad to 16 bits. A KAC 1.0 parser should ignore this, but future versions may add parameters in this space.
+                16ub textureIdx                  ; Index to an entry in the TXTR segment that defines this material's texture. Ignored if (hasTexture = 0).
+                1ub hasTexture                   ; Whether this material uses a texture (= 1) or just has a solid fill (= 0).
+                1ub hasTextureFiltering          ; Whether the material's texture will be scaled with nearest neighbor interpolation (= 0) or with linear interpolation (= 1). 
+                1ub hasSmoothShading             ; Whether to use smooth (interpolated across vertex normals) or flat shading on polygon faces.
+                13b <padding>                    ; Pad to 32 bits. A KAC 1.0 parser should ignore this, but future versions may add parameters in this space.
             }
-        }
-    }
-    texture metadata
-    {
-        32sb segmentIdentifier
-        {
-            "TXMD"
-        }
-        32ub n
-        160b metadata * n
-        {
-            3ub texture side length exponent ; The texture's side length is given by (2^(exponent+1)), i.e. it's 2, 4, 8, 16, 32, 64, 128, or 256.
-            25ub pixel data offset           ; Offset to the beginning of this texture's pixel data in the TXPX segment's pixel data array.
-            4b <padding>                     ; Pad to 32 bits. A KAC 1.0 parser should ignore this, but future versions may add parameters in this space.
-            128ub pixel data hash            ; First 128 bits of a SHA-256 hash of the texture's pixel data.
         }
     }
     vertex coordinates
@@ -158,34 +144,36 @@ The KAC 1.0 format
         32ub n
         160b triangle * n
         {
-            16ub materialIdx                ; Index to an entry in the MATE segment that defines this triangle's material.
+            16ub materialIdx                     ; Index to an entry in the MATE segment that defines this triangle's material.
             48b indexedVertex * 3
             {
-                16ub vertexCoordinatesIdx   ; Index to an entry in the VERT segment that defines the coordinates of this vertex.
-                16ub normalIdx              ; Index to an entry in the NORM segment this defines the normal of this vertex.
-                16ub uvIdx                  ; Index to an entry in the UV segment that defines the UV coordinates of this vertex.
+                16ub vertexCoordinatesIdx        ; Index to an entry in the VERT segment that defines the coordinates of this vertex.
+                16ub normalIdx                   ; Index to an entry in the NORM segment this defines the normal of this vertex.
+                16ub uvIdx                       ; Index to an entry in the UV segment that defines the UV coordinates of this vertex.
             }
         }
     }
-    texture pixel data
+    textures                                     ; Mipmapped textures. Each texture has a base size (mip level 0) and successive levels of mipmapping of half the previous size down to 1 x 1 (e.g. 128 x 128, 64 x 64, 32 x 32, ..., 1 x 1).
     {
         32sb segmentIdentifier
         {
-            "TXPX"
+            "TXTR"
         }
         32ub n
-        16b pixel * n
+        ~b texture * n
         {
-            5ub r
-            5ub g
-            5ub b
-            1ub a
-        }
-    }
-    end-of-file
-    {
-        32sb segmentIdentifier
-        {
-            "ENDS"
+            160b metadata
+            {
+                16ub texture side length         ; The texture's side length at mip level 0.
+                16b <padding>                    ; Pad to 32 bits. A KAC 1.0 parser should ignore this, but future versions may add parameters in this space.
+                128ub pixel data hash            ; First 128 bits of a SHA-256 hash of the texture's pixel data at mip level 0.
+            }
+            16b pixel data * x                   ; The texture's pixels for all levels of mipmapping, starting at level 0; so x is the sum of (a/1)^2 + (a/2)^2 + (a/4)^2 + (a/8)^2 + ... + 1*1, where a is the texture's side length and 1*1 is the smallest possible size. Leftover bytes are padded.
+            {
+                5ub r
+                5ub g
+                5ub b
+                1ub a
+            }
         }
     }
