@@ -88,9 +88,8 @@ The KAC 1.0 format
             {
                 16ub textureIdx                  ; Index to an entry in the TXTR segment that defines this material's texture. Ignored if (hasTexture = 0).
                 1ub hasTexture                   ; Whether this material uses a texture (= 1) or just has a solid fill (= 0).
-                1ub hasTextureFiltering          ; Whether the material's texture will be scaled with nearest neighbor interpolation (= 0) or with linear interpolation (= 1). 
                 1ub hasSmoothShading             ; Whether to use smooth (interpolated across vertex normals) or flat shading on polygon faces.
-                13b <padding>                    ; Pad to 32 bits. A KAC 1.0 parser should ignore this, but future versions may add parameters in this space.
+                14b <padding>                    ; Pad to 32 bits. A KAC 1.0 parser should ignore this, but future versions may add parameters in this space.
             }
         }
     }
@@ -165,7 +164,9 @@ The KAC 1.0 format
             160b metadata
             {
                 16ub texture side length         ; The texture's side length at mip level 0.
-                16b <padding>                    ; Pad to 32 bits. A KAC 1.0 parser should ignore this, but future versions may add parameters in this space.
+                1ub sampleLinearly               ; Whether the texture should be sampled with linear (= 1) or nearest neighbor (= 0) interpolation.
+                1ub clampUV                      ; Whether the texture should be UV-wrapped with clamping (= 1) or tiling (= 0).
+                14b <padding>                    ; Pad to 32 bits. A KAC 1.0 parser should ignore this, but future versions may add parameters in this space.
                 128ub pixel data hash            ; First 128 bits of a SHA-256 hash of the texture's pixel data at mip level 0.
             }
             16b pixel data * x                   ; The texture's pixels for all levels of mipmapping, starting at level 0; so x is the sum of (a/1)^2 + (a/2)^2 + (a/4)^2 + (a/8)^2 + ... + 1*1, where a is the texture's side length and 1*1 is the smallest possible size. Leftover bytes are padded.

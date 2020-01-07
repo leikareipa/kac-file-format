@@ -161,10 +161,6 @@ bool make_kac_data_from_obj(kac_1_0_data_s &kacData,
             // Note: We only recognize OBJ's diffuse textures.
             kacMaterial.metadata.hasTexture = !tinyMaterial.diffuse_texname.empty();
 
-            // The texture-filtering mode can't be defined via an OBJ; so let's just
-            // default to having it on.
-            kacMaterial.metadata.hasTextureFiltering = true;
-
             // We'll smooth-shade all faces by default; but if any face in the mesh
             // that's using this material asks for flat shading, this parameter will
             // be set to false for the entire material.
@@ -204,8 +200,13 @@ bool make_kac_data_from_obj(kac_1_0_data_s &kacData,
                     // The base texture side length at mip level 0.
                     kacTexture.metadata.sideLength = texture.width();
 
-                    // Save the texture's pixels. We'll generate and save successively smaller levels
-                    // of mipmapping, from the texture's base size down to 1 x 1.
+                    // These parameters can't be specified via an OBJ file; so let's just invent
+                    // reasonable defaults.
+                    kacTexture.metadata.sampleLinearly = 1;
+                    kacTexture.metadata.clampUV = 0;
+
+                    // Save the texture's pixels. We'll generate and save successively smaller
+                    // levels of mipmapping, from the texture's base size down to 1 x 1.
                     for (unsigned m = 0; ; m++)
                     {
                         const bool textureHasAlpha = texture.hasAlphaChannel();

@@ -115,8 +115,7 @@ bool export_kac_1_0_c::write_materials(const std::vector<kac_1_0_material_s> &ma
 
             const uint32_t packedMetadata = ((material.metadata.textureIdx          & 0xffff) <<  0) |
                                             ((material.metadata.hasTexture          & 0x1   ) << 16) |
-                                            ((material.metadata.hasTextureFiltering & 0x1   ) << 17) |
-                                            ((material.metadata.hasSmoothShading    & 0x1   ) << 18);
+                                            ((material.metadata.hasSmoothShading    & 0x1   ) << 17);
                                             
             std::fwrite((char*)&packedMetadata, sizeof(packedMetadata), 1, this->file);
         }
@@ -188,7 +187,9 @@ bool export_kac_1_0_c::write_textures(const std::vector<kac_1_0_texture_s> &text
 
             // Write the texture's metadata.
             {
-                const uint32_t packedParams = (texture.metadata.sideLength & 0xffff);
+                const uint32_t packedParams = ((texture.metadata.sideLength     & 0xffff) <<  0) |
+                                              ((texture.metadata.sampleLinearly & 0x1)    << 16) |
+                                              ((texture.metadata.clampUV        & 0x1)    << 17);
 
                 std::fwrite((char*)&packedParams, sizeof(packedParams), 1, this->file);
                 std::fwrite((char*)&texture.metadata.pixelHash, sizeof(texture.metadata.pixelHash), 1, this->file);
