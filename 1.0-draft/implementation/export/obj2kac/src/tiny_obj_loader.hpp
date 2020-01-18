@@ -2144,8 +2144,6 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
   }
   MaterialFileReader matFileReader(baseDir);
 
-  std::cout << "tiny: " << baseDir << std::endl;
-
   return LoadObj(attrib, shapes, materials, warn, err, &ifs, &matFileReader,
                  trianglulate, default_vcols_fallback);
 }
