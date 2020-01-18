@@ -13,9 +13,9 @@ Introduction to KAC 1.0
     maps) are included in the file.
 
     The KAC format is primarily intended as a companion mesh container for the
-    retro-oriented shiet renderer (https://www.github.com/leikareipa/shiet/),
+    retro-oriented Kelpo renderer (https://www.github.com/leikareipa/kelpo/),
     which targets the Win32 platform and hardware such as the 3dfx Voodoo and
-    3DLABS Permedia.
+    the 3DLABS Permedia.
 
 
 Features and limitations of the KAC 1.0 format
