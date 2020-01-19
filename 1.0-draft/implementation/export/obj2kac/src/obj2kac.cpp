@@ -195,6 +195,11 @@ bool make_kac_data_from_obj(kac_1_0_data_s &kacData,
                 }
                 else
                 {
+                    // This assumes that textures will be exported into the KAC file in the same
+                    // order as they are added into the kacData.textures container; and that
+                    // duplicate textures are not merged.
+                    kacMaterial.metadata.textureIdx = kacData.textures.size();
+
                     kac_1_0_texture_s kacTexture;
 
                     // The base texture side length at mip level 0.
