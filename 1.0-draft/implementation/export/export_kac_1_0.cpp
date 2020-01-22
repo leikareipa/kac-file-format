@@ -12,6 +12,7 @@
 static_assert(sizeof(float) == 4);
 
 #include <cassert>
+#include <cstdio>
 #include <cmath>
 #include "export_kac_1_0.hpp"
 

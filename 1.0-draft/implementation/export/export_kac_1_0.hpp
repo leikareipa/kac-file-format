@@ -10,7 +10,6 @@
 #ifndef EXPORT_KAC_1_0_H
 #define EXPORT_KAC_1_0_H
 
-#include <string>
 #include <vector>
 #include "../kac_1_0_types.h"
 
