@@ -31,6 +31,11 @@ struct kac_1_0_data_s
     std::vector<kac_1_0_normal_s> normals;
 };
 
+static unsigned nearest_power_of_two(const unsigned value)
+{
+    return std::pow(2, std::round(std::log2(value)));
+}
+
 // Parses the given OBJ file and fills the given KAC data structure with the
 // contents of the OBJ file converted into the KAC 1.0 format. Optionally, a
 // base path for the MTL file can be specified; otherwise, the absolute path
@@ -177,115 +182,128 @@ bool make_kac_data_from_obj(kac_1_0_data_s &kacData,
                     std::cerr << "ERROR: Failed to load texture \"" << tinyMaterial.diffuse_texname << "\"\n";
                     return false;
                 }
-                else if (texture.width() != texture.height())
+
+                unsigned textureWidth = texture.width();
+                unsigned textureHeight = texture.height();
+
+                // Clamp the texture's resolution to the range supported.
+                textureWidth = std::max(KAC_1_0_MIN_TEXTURE_SIDE_LENGTH, std::min(KAC_1_0_MAX_TEXTURE_SIDE_LENGTH, textureWidth));
+                textureHeight = std::max(KAC_1_0_MIN_TEXTURE_SIDE_LENGTH, std::min(KAC_1_0_MAX_TEXTURE_SIDE_LENGTH, textureHeight));
+
+                // Resize non-square and non-power-of-two textures into a square whose side length
+                // is the nearest power of two of the longer of the texture's original sides.
+                if ((textureWidth != textureHeight) ||
+                    ((textureWidth & (textureWidth - 1)) != 0)) // <- Test for non-power-of-two.
                 {
-                    std::cerr << "ERROR: Texture \"" << tinyMaterial.diffuse_texname << "\" is not square\n";
-                    return false;
+                    const unsigned largestSideLen = std::max(textureWidth, textureHeight);
+                    const unsigned newSideLen = nearest_power_of_two(largestSideLen);
+
+                    textureWidth = textureHeight = newSideLen;
                 }
-                else if ((texture.width() < KAC_1_0_MIN_TEXTURE_SIDE_LENGTH) ||
-                         (texture.width() > KAC_1_0_MAX_TEXTURE_SIDE_LENGTH))
+
+                // Downscale or upscale the texture image as needed to fit the required resolution.
+                if ((unsigned(texture.width()) != textureWidth) ||
+                    (unsigned(texture.height()) != textureHeight))
                 {
-                    std::cerr << "ERROR: Texture \"" << tinyMaterial.diffuse_texname << "\" has invalid dimensions\n";
-                    return false;
+                    std::cout << "Resizing texture \"" << tinyMaterial.diffuse_texname
+                              << "\" from " << texture.width() << "x" << texture.height()
+                              << " to " << textureWidth << "x" << textureHeight << "\n";
+
+                    texture = texture.scaled(textureWidth, textureHeight,
+                                             Qt::IgnoreAspectRatio,
+                                             Qt::SmoothTransformation);
                 }
-                else if ((texture.width() & (texture.width() - 1)) != 0)
+
+                // This assumes that textures will be exported into the KAC file in the same
+                // order as they are added into the kacData.textures container; and that
+                // duplicate textures are not merged.
+                kacMaterial.metadata.textureIdx = kacData.textures.size();
+
+                kac_1_0_texture_s kacTexture;
+
+                // The base texture side length at mip level 0.
+                kacTexture.metadata.sideLength = texture.width();
+
+                // These parameters can't be specified via an OBJ file; so let's just invent
+                // reasonable defaults.
+                kacTexture.metadata.sampleLinearly = 1;
+                kacTexture.metadata.clampUV = 0;
+
+                // Save the texture's pixels. We'll generate and save successively smaller
+                // levels of mipmapping, from the texture's base size down to 1 x 1.
+                for (unsigned m = 0; ; m++)
                 {
-                    std::cerr << "ERROR: Texture \"" << tinyMaterial.diffuse_texname << "\" is not power-of-two\n";
-                    return false;
-                }
-                else
-                {
-                    // This assumes that textures will be exported into the KAC file in the same
-                    // order as they are added into the kacData.textures container; and that
-                    // duplicate textures are not merged.
-                    kacMaterial.metadata.textureIdx = kacData.textures.size();
+                    const bool textureHasAlpha = texture.hasAlphaChannel();
+                    const uint32_t mipLevelSideLength = (kacTexture.metadata.sideLength / pow(2, m));
 
-                    kac_1_0_texture_s kacTexture;
-
-                    // The base texture side length at mip level 0.
-                    kacTexture.metadata.sideLength = texture.width();
-
-                    // These parameters can't be specified via an OBJ file; so let's just invent
-                    // reasonable defaults.
-                    kacTexture.metadata.sampleLinearly = 1;
-                    kacTexture.metadata.clampUV = 0;
-
-                    // Save the texture's pixels. We'll generate and save successively smaller
-                    // levels of mipmapping, from the texture's base size down to 1 x 1.
-                    for (unsigned m = 0; ; m++)
+                    if (mipLevelSideLength > unsigned(texture.width()))
                     {
-                        const bool textureHasAlpha = texture.hasAlphaChannel();
-                        const int32_t mipLevelSideLength = (kacTexture.metadata.sideLength / pow(2, m));
-
-                        if (mipLevelSideLength > texture.width())
-                        {
-                            std::cerr << "ERROR: Incorrect texture mip level dimensions.\n";
-                            return false;
-                        }
-
-                        if (mipLevelSideLength < KAC_1_0_MIN_TEXTURE_SIDE_LENGTH)
-                        {
-                            if (!m)
-                            {
-                                std::cerr << "ERROR: Could not generate mip levels for texture \""
-                                          << tinyMaterial.diffuse_texname << "\".\n";
-                                return false;
-                            }
-
-                            break;
-                        }
-
-                        if (m >= KAC_1_0_MAX_NUM_MIP_LEVELS)
-                        {
-                            std::cerr << "ERROR: Too many mip levels for texture \""
-                                      << tinyMaterial.diffuse_texname << "\".\n";
-                            return false;
-                        }
-
-                        // Downscale the texture image to the next mip level.
-                        if (mipLevelSideLength != texture.width())
-                        {
-                            texture = texture.scaledToWidth(mipLevelSideLength, Qt::SmoothTransformation);
-                        }
-
-                        if ((texture.width() != mipLevelSideLength) ||
-                            (texture.height() != mipLevelSideLength))
-                        {
-                            std::cerr << "ERROR: Invalid mip level dimensions for texture \""
-                                      << tinyMaterial.diffuse_texname << "\".\n";
-                            return false;
-                        }
-
-                        kacTexture.mipLevel[m] = new kac_1_0_texture_s::kac_1_0_texture_pixel_s[texture.width() * texture.height()];
-
-                        for (int y = 0; y < texture.height(); y++)
-                        {
-                            for (int x = 0; x < texture.width(); x++)
-                            {
-                                const QColor pixel(texture.pixelColor(x, y));
-
-                                const unsigned texIdx = (x + y * texture.width());
-                                kacTexture.mipLevel[m][texIdx].r = export_kac_1_0_c::reduce_8bit_color_value_to_5bit(pixel.red());
-                                kacTexture.mipLevel[m][texIdx].g = export_kac_1_0_c::reduce_8bit_color_value_to_5bit(pixel.green());
-                                kacTexture.mipLevel[m][texIdx].b = export_kac_1_0_c::reduce_8bit_color_value_to_5bit(pixel.blue());
-                                kacTexture.mipLevel[m][texIdx].a = export_kac_1_0_c::reduce_8bit_color_value_to_1bit(textureHasAlpha? pixel.alpha() : 255);
-                            }
-                        }
+                        std::cerr << "ERROR: Incorrect texture mip level dimensions.\n";
+                        return false;
                     }
 
-                    // Create a hash of the texture's pixel data at mip level 0.
+                    if (mipLevelSideLength < KAC_1_0_MIN_TEXTURE_SIDE_LENGTH)
                     {
-                        const unsigned pixelDataByteSize = (texture.width() * texture.height() * 2);
+                        if (!m)
+                        {
+                            std::cerr << "ERROR: Could not generate mip levels for texture \""
+                                        << tinyMaterial.diffuse_texname << "\".\n";
+                            return false;
+                        }
 
-                        const QByteArray pixelData((const char*)kacTexture.mipLevel[0], pixelDataByteSize);
-                        QByteArray hash = QCryptographicHash::hash(pixelData, QCryptographicHash::Sha256);
-                        hash.resize(16);
-
-                        memcpy((char*)&kacTexture.metadata.pixelHash, hash.constData(), hash.length());
+                        break;
                     }
 
-                    kacData.textures.push_back(kacTexture);
+                    if (m >= KAC_1_0_MAX_NUM_MIP_LEVELS)
+                    {
+                        std::cerr << "ERROR: Too many mip levels for texture \""
+                                    << tinyMaterial.diffuse_texname << "\".\n";
+                        return false;
+                    }
+
+                    // Downscale the texture image to the next mip level.
+                    if (mipLevelSideLength != unsigned(texture.width()))
+                    {
+                        texture = texture.scaledToWidth(mipLevelSideLength, Qt::SmoothTransformation);
+                    }
+
+                    if ((unsigned(texture.width()) != mipLevelSideLength) ||
+                        (unsigned(texture.height()) != mipLevelSideLength))
+                    {
+                        std::cerr << "ERROR: Invalid mip level dimensions for texture \""
+                                    << tinyMaterial.diffuse_texname << "\".\n";
+                        return false;
+                    }
+
+                    kacTexture.mipLevel[m] = new kac_1_0_texture_s::kac_1_0_texture_pixel_s[texture.width() * texture.height()];
+
+                    for (int y = 0; y < texture.height(); y++)
+                    {
+                        for (int x = 0; x < texture.width(); x++)
+                        {
+                            const QColor pixel(texture.pixelColor(x, y));
+
+                            const unsigned texIdx = (x + y * texture.width());
+                            kacTexture.mipLevel[m][texIdx].r = export_kac_1_0_c::reduce_8bit_color_value_to_5bit(pixel.red());
+                            kacTexture.mipLevel[m][texIdx].g = export_kac_1_0_c::reduce_8bit_color_value_to_5bit(pixel.green());
+                            kacTexture.mipLevel[m][texIdx].b = export_kac_1_0_c::reduce_8bit_color_value_to_5bit(pixel.blue());
+                            kacTexture.mipLevel[m][texIdx].a = export_kac_1_0_c::reduce_8bit_color_value_to_1bit(textureHasAlpha? pixel.alpha() : 255);
+                        }
+                    }
                 }
+
+                // Create a hash of the texture's pixel data at mip level 0.
+                {
+                    const unsigned pixelDataByteSize = (texture.width() * texture.height() * 2);
+
+                    const QByteArray pixelData((const char*)kacTexture.mipLevel[0], pixelDataByteSize);
+                    QByteArray hash = QCryptographicHash::hash(pixelData, QCryptographicHash::Sha256);
+                    hash.resize(16);
+
+                    memcpy((char*)&kacTexture.metadata.pixelHash, hash.constData(), hash.length());
+                }
+
+                kacData.textures.push_back(kacTexture);
             }
 
             kacData.materials.push_back(kacMaterial);

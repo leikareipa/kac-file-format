@@ -19,15 +19,15 @@
  * If you modify this value (for another version of KAC), you should also change
  * the constants on texture dimensions.
  */
-#define KAC_1_0_MAX_NUM_MIP_LEVELS 9
+#define KAC_1_0_MAX_NUM_MIP_LEVELS 9u
 
 /* KAC 1.0 requires textures to be square and power-of-two.
  *
  * If you modify these value (for another version of KAC), you should also change
  * the constant on maximum number of mip levels, accordingly.
  */
-#define KAC_1_0_MAX_TEXTURE_SIDE_LENGTH 256
-#define KAC_1_0_MIN_TEXTURE_SIDE_LENGTH 1
+#define KAC_1_0_MAX_TEXTURE_SIDE_LENGTH 256u
+#define KAC_1_0_MIN_TEXTURE_SIDE_LENGTH 1u
 
 struct kac_1_0_texture_s
 {
