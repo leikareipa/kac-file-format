@@ -214,6 +214,8 @@ bool make_kac_data_from_obj(kac_1_0_data_s &kacData,
                                              Qt::SmoothTransformation);
                 }
 
+                texture = texture.mirrored(false, true);
+
                 // This assumes that textures will be exported into the KAC file in the same
                 // order as they are added into the kacData.textures container; and that
                 // duplicate textures are not merged.
