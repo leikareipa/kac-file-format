@@ -41,9 +41,10 @@ static unsigned nearest_power_of_two(const unsigned value)
 // base path for the MTL file can be specified; otherwise, the absolute path
 // of the OBJ file will be used. Returns true on successful completion; false
 // otherwise.
-bool make_kac_data_from_obj(kac_1_0_data_s &kacData,
-                            const std::filesystem::path &objFileName,
-                            std::filesystem::path mtlFilePath = "")
+static bool make_kac_data_from_obj(kac_1_0_data_s &kacData,
+                                   const std::filesystem::path &objFileName,
+                                   std::filesystem::path mtlFilePath = "",
+                                   const unsigned maxTextureSideLen = KAC_1_0_MAX_TEXTURE_SIDE_LENGTH)
 {
     std::ifstream objFile(objFileName);
 
@@ -187,8 +188,8 @@ bool make_kac_data_from_obj(kac_1_0_data_s &kacData,
                 unsigned textureHeight = texture.height();
 
                 // Clamp the texture's resolution to the range supported.
-                textureWidth = std::max(KAC_1_0_MIN_TEXTURE_SIDE_LENGTH, std::min(KAC_1_0_MAX_TEXTURE_SIDE_LENGTH, textureWidth));
-                textureHeight = std::max(KAC_1_0_MIN_TEXTURE_SIDE_LENGTH, std::min(KAC_1_0_MAX_TEXTURE_SIDE_LENGTH, textureHeight));
+                textureWidth = std::max(KAC_1_0_MIN_TEXTURE_SIDE_LENGTH, std::min(maxTextureSideLen, textureWidth));
+                textureHeight = std::max(KAC_1_0_MIN_TEXTURE_SIDE_LENGTH, std::min(maxTextureSideLen, textureHeight));
 
                 // Resize non-square and non-power-of-two textures into a square whose side length
                 // is the nearest power of two of the longer of the texture's original sides.
@@ -387,10 +388,20 @@ bool make_kac_data_from_obj(kac_1_0_data_s &kacData,
 
 int main(int argc, char *argv[])
 {
-    if (argc != 3)
+    if (argc < 3 || argc > 4)
     {
-        std::cout << "Usage: obj2kac <input filename> <output filename>\n";
+        std::cout << "Usage: obj2kac <input filename> <output filename> [<max texture side length>]\n";
         return 1;
+    }
+
+    unsigned maxTextureSideLength = KAC_1_0_MAX_TEXTURE_SIDE_LENGTH;
+
+    if (argc == 4)
+    {
+        const unsigned cliMaxTextureSize = strtoul(argv[3], 0, 10);
+        
+        maxTextureSideLength = std::max(KAC_1_0_MIN_TEXTURE_SIDE_LENGTH,
+                                        std::min(KAC_1_0_MAX_TEXTURE_SIDE_LENGTH, cliMaxTextureSize));
     }
 
     if (!std::filesystem::exists(argv[1]))
@@ -400,7 +411,7 @@ int main(int argc, char *argv[])
     }
 
     kac_1_0_data_s kacData;
-    if (!make_kac_data_from_obj(kacData, std::filesystem::absolute(argv[1])))
+    if (!make_kac_data_from_obj(kacData, std::filesystem::absolute(argv[1]), "", maxTextureSideLength))
     {
         std::cerr << "Failed to convert the input file\n";
         return 1;
