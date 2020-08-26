@@ -33,7 +33,7 @@ struct kac_1_0_data_s
 
 static unsigned nearest_power_of_two(const unsigned value)
 {
-    return std::pow(2, std::round(std::log2(value)));
+    return std::pow(2, std::floor(std::log2(value)));
 }
 
 // Parses the given OBJ file and fills the given KAC data structure with the
