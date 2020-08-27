@@ -14,6 +14,7 @@
 #include <sstream>
 #include <fstream>
 #include <cassert>
+#include <getopt.h>
 #include "../../export_kac_1_0.hpp"
 #include "string_utils.h"
 
@@ -388,36 +389,78 @@ static bool make_kac_data_from_obj(kac_1_0_data_s &kacData,
 
 int main(int argc, char *argv[])
 {
-    if (argc < 3 || argc > 4)
-    {
-        std::cout << "Usage: obj2kac <input filename> <output filename> [<max texture side length>]\n";
-        return 1;
-    }
-
+    // Parse the command line.
+    std::string inputFileName = "";
+    std::string outputFileName = "";
     unsigned maxTextureSideLength = KAC_1_0_MAX_TEXTURE_SIDE_LENGTH;
-
-    if (argc == 4)
     {
-        const unsigned cliMaxTextureSize = strtoul(argv[3], 0, 10);
+        const option getoptLongOptions[] =
+        {
+            {"input", required_argument, nullptr, 'i'},
+            {"output", required_argument, nullptr, 'o'},
+            {"max-texture-size", required_argument, nullptr, 't'},
+            {"stats", no_argument, nullptr, 's'},
+            {0, 0, 0, 0}
+        };
+
+        int c = 0;
         
-        maxTextureSideLength = std::max(KAC_1_0_MIN_TEXTURE_SIDE_LENGTH,
-                                        std::min(KAC_1_0_MAX_TEXTURE_SIDE_LENGTH, cliMaxTextureSize));
+        while ((c = getopt_long(argc, argv, "i:o:t:s", getoptLongOptions, nullptr)) != -1)
+        {
+            switch (c)
+            {
+                case 'i':
+                {
+                    inputFileName = optarg;
+
+                    break;
+                }
+                case 'o':
+                {
+                    outputFileName = optarg;
+
+                    break;
+                }
+                case 't':
+                {
+                    const unsigned cliMaxTextureSize = strtoul(optarg, 0, 10);
+        
+                    maxTextureSideLength = std::max(KAC_1_0_MIN_TEXTURE_SIDE_LENGTH,
+                                                    std::min(KAC_1_0_MAX_TEXTURE_SIDE_LENGTH, cliMaxTextureSize));
+
+                    break;
+                }
+                case 's':
+                {
+                    /// TODO.
+
+                    break;
+                }
+            }
+        }
     }
 
-    if (!std::filesystem::exists(argv[1]))
+    if (inputFileName.empty() ||
+        !std::filesystem::exists(inputFileName))
     {
         std::cerr << "ERROR: The input file does not appear to exist\n";
         return 1;
     }
 
+    if (outputFileName.empty())
+    {
+        std::cerr << "ERROR: No output file specified\n";
+        return 1;
+    }
+
     kac_1_0_data_s kacData;
-    if (!make_kac_data_from_obj(kacData, std::filesystem::absolute(argv[1]), "", maxTextureSideLength))
+    if (!make_kac_data_from_obj(kacData, std::filesystem::absolute(inputFileName), "", maxTextureSideLength))
     {
         std::cerr << "Failed to convert the input file\n";
         return 1;
     }
 
-    export_kac_1_0_c kacFile(argv[2]);
+    export_kac_1_0_c kacFile(outputFileName.c_str());
     if (!kacFile.write_header() ||
         !kacFile.write_normals(kacData.normals) ||
         !kacFile.write_uv_coordinates(kacData.uvCoords) ||
