@@ -11,6 +11,7 @@
 #define EXPORT_KAC_1_0_H
 
 #include <vector>
+#include <map>
 #include "../kac_1_0_types.h"
 
 class export_kac_1_0_c
@@ -31,7 +32,7 @@ class export_kac_1_0_c
         bool write_triangles(const std::vector<kac_1_0_triangle_s> &triangles) const;
         bool write_uv_coordinates(const std::vector<kac_1_0_uv_coordinates_s> &uvCoordinates) const;
         bool write_vertex_coordinates(const std::vector<kac_1_0_vertex_coordinates_s> &vertices) const;
-        bool write_textures(const std::vector<kac_1_0_texture_s> &textures) const;
+        bool write_textures(const std::map<std::string, kac_1_0_texture_s> &textures) const;
 
         // Utility functions.
         static unsigned reduce_8bit_color_value_to_1bit(const uint8_t val);

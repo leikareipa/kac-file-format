@@ -10,9 +10,12 @@
 #include <QtCore/QCryptographicHash>
 #include <QtGui/QImage>
 #include <filesystem>
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <string>
+#include <map>
 #include <cassert>
 #include <getopt.h>
 #include "../../export_kac_1_0.hpp"
@@ -28,7 +31,7 @@ struct kac_1_0_data_s
     std::vector<kac_1_0_uv_coordinates_s> uvCoords;
     std::vector<kac_1_0_material_s> materials;
     std::vector<kac_1_0_triangle_s> triangles;
-    std::vector<kac_1_0_texture_s> textures;
+    std::map<std::string, kac_1_0_texture_s> textures;
     std::vector<kac_1_0_normal_s> normals;
 };
 
@@ -156,27 +159,19 @@ static bool make_kac_data_from_obj(kac_1_0_data_s &kacData,
             return false;
         }
 
+        // Convert texture files into KAC's texture format.
         for (const auto &tinyMaterial: tinyMaterials)
         {
-            kac_1_0_material_s kacMaterial;
-
-            kacMaterial.color.r = export_kac_1_0_c::reduce_8bit_color_value_to_4bit(unsigned(tinyMaterial.diffuse[0] * 255));
-            kacMaterial.color.g = export_kac_1_0_c::reduce_8bit_color_value_to_4bit(unsigned(tinyMaterial.diffuse[1] * 255));
-            kacMaterial.color.b = export_kac_1_0_c::reduce_8bit_color_value_to_4bit(unsigned(tinyMaterial.diffuse[2] * 255));
-            kacMaterial.color.a = export_kac_1_0_c::reduce_8bit_color_value_to_4bit(255); // OBJ doesn't support alpha.
-
-            // Note: We only recognize OBJ's diffuse textures.
-            kacMaterial.metadata.hasTexture = !tinyMaterial.diffuse_texname.empty();
-
-            // We'll smooth-shade all faces by default; but if any face in the mesh
-            // that's using this material asks for flat shading, this parameter will
-            // be set to false for the entire material.
-            kacMaterial.metadata.hasSmoothShading = true;
-
             // If the material has a texture, convert its pixel data into KAC's
             // 16-bit 5551 format.
             if (!tinyMaterial.diffuse_texname.empty())
             {
+                // If we've already converted this texture.
+                if (kacData.textures.find(tinyMaterial.diffuse_texname) != kacData.textures.end())
+                {
+                    continue;
+                }
+
                 QImage texture(tinyMaterial.diffuse_texname.c_str());
 
                 if (texture.isNull())
@@ -217,11 +212,6 @@ static bool make_kac_data_from_obj(kac_1_0_data_s &kacData,
                 }
 
                 texture = texture.mirrored(false, true);
-
-                // This assumes that textures will be exported into the KAC file in the same
-                // order as they are added into the kacData.textures container; and that
-                // duplicate textures are not merged.
-                kacMaterial.metadata.textureIdx = kacData.textures.size();
 
                 kac_1_0_texture_s kacTexture;
 
@@ -307,7 +297,39 @@ static bool make_kac_data_from_obj(kac_1_0_data_s &kacData,
                     memcpy((char*)&kacTexture.metadata.pixelHash, hash.constData(), hash.length());
                 }
 
-                kacData.textures.push_back(kacTexture);
+                kacData.textures[tinyMaterial.diffuse_texname] = kacTexture;
+            }
+        }
+
+        // Convert imported OBJ materials into KAC's material format.
+        for (const auto &tinyMaterial: tinyMaterials)
+        {
+            kac_1_0_material_s kacMaterial;
+
+            kacMaterial.color.r = export_kac_1_0_c::reduce_8bit_color_value_to_4bit(unsigned(tinyMaterial.diffuse[0] * 255));
+            kacMaterial.color.g = export_kac_1_0_c::reduce_8bit_color_value_to_4bit(unsigned(tinyMaterial.diffuse[1] * 255));
+            kacMaterial.color.b = export_kac_1_0_c::reduce_8bit_color_value_to_4bit(unsigned(tinyMaterial.diffuse[2] * 255));
+            kacMaterial.color.a = export_kac_1_0_c::reduce_8bit_color_value_to_4bit(255); // OBJ doesn't support alpha.
+
+            // Note: We only recognize OBJ's diffuse textures.
+            kacMaterial.metadata.hasTexture = !tinyMaterial.diffuse_texname.empty();
+
+            // We'll smooth-shade all faces by default; but if any face in the mesh
+            // that's using this material asks for flat shading, this parameter will
+            // be set to false for the entire material.
+            kacMaterial.metadata.hasSmoothShading = true;
+
+            if (!tinyMaterial.diffuse_texname.empty())
+            {
+                const auto textureEntry = kacData.textures.find(tinyMaterial.diffuse_texname);
+
+                if (textureEntry == kacData.textures.end())
+                {
+                    std::cerr << "ERROR: Can't access texture data for material \"" << tinyMaterial.name << "\"\n";
+                    return false;
+                }
+
+                kacMaterial.metadata.textureIdx = std::distance(kacData.textures.begin(), textureEntry);
             }
 
             kacData.materials.push_back(kacMaterial);

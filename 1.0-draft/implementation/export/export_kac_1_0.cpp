@@ -170,7 +170,7 @@ bool export_kac_1_0_c::write_triangles(const std::vector<kac_1_0_triangle_s> &tr
     return this->is_valid_output_stream();
 }
 
-bool export_kac_1_0_c::write_textures(const std::vector<kac_1_0_texture_s> &textures) const
+bool export_kac_1_0_c::write_textures(const std::map<std::string, kac_1_0_texture_s> &textures) const
 {
     if (this->is_valid_output_stream())
     {
@@ -179,7 +179,7 @@ bool export_kac_1_0_c::write_textures(const std::vector<kac_1_0_texture_s> &text
         std::fputs("TXTR", this->file);
         std::fwrite((char*)&numTextures, sizeof(numTextures), 1, this->file);
         
-        for (const auto &texture: textures)
+        for (const auto &[textureFilename, texture]: textures)
         {
             assert((texture.metadata.sideLength >= KAC_1_0_MIN_TEXTURE_SIDE_LENGTH) &&
                    (texture.metadata.sideLength <= KAC_1_0_MAX_TEXTURE_SIDE_LENGTH) &&
